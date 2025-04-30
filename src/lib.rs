@@ -7,6 +7,7 @@ use std::assert;
 use std::error;
 
 use once_cell::sync::Lazy;
+use sui_transactional_test_runner::args::AdvanceClockCommand;
 use tempfile::NamedTempFile;
 use serde_json::Value;
 
@@ -255,6 +256,36 @@ pub async fn view_object(
         }
         Err(error) => {
             eprintln!("[!] Failed to view object: {:?}", error);
+            return Err(error.into());
+        }
+    };
+}
+
+pub async fn set_clock(
+    adapter: &mut SuiTestAdapter, 
+    duration_ns: u64
+) -> Result<(), Box<dyn error::Error>> {
+    let command_text = "run";
+    let task_text = "//#".to_owned() + command_text.replace('\n', "\n//#").as_str();
+
+    let arg_view = TaskInput {
+        command: SuiSubcommand::AdvanceClock(AdvanceClockCommand { duration_ns }),
+        name: "advance-clock".to_string(),
+        number: 0,
+        start_line: 1,
+        command_lines_stop: 1,
+        stop_line: 1,
+        data: None,
+        task_text: task_text,
+    };
+
+    match adapter.handle_subcommand(arg_view).await {
+        Ok(out) => {
+            println!("[*] Successfully set time {:#?}", duration_ns);
+            return Ok(());
+        }
+        Err(error) => {
+            eprintln!("[!] Failed to set time: {:?}", error);
             return Err(error.into());
         }
     };
